@@ -1,0 +1,10 @@
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\obj\Debug\MythicalExperienceConsole.csprojResolveAssemblyReference.cache
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\MythicalExperienceConsole.exe.config
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\MythicalExperienceConsole.exe
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\MythicalExperienceConsole.pdb
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\Microsoft.Identity.Client.dll
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\Microsoft.Identity.Client.xml
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\obj\Debug\MythicalExperienceConsole.exe
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\obj\Debug\MythicalExperienceConsole.pdb
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\Newtonsoft.Json.dll
+C:\Users\jay_p\Source\Repos\MythicalExperienceConsole\MythicalExperienceConsole\MythicalExperienceConsole\bin\Debug\Newtonsoft.Json.xml
