@@ -17,8 +17,10 @@ namespace MythicalExperienceConsole
         private static string _mythicalEndPoint = "https://mythicalexperience.azurewebsites.net/api/GetGraph?code=eo6tnI1THhBAnmaadMkh8ngEdoqcuCBpzewOgjHrKCuY1Y3TruwpPA==";
         private static string _mythicalEventsCreateSubEndPoint = "https://mythicalexperience.azurewebsites.net/api/CreateGraphEventSubscription?code=mBqcWni6lg9Ukv3uqNZWm0BWUQGIXeMCtqZK1IwJtZeyY9RaQbgfbg==";
         private static string _mythicalFindMtgTimesEndPoint = "https://graph.microsoft.com/v1.0/me/findMeetingTimes";
-        private static string _mythicalGetUserEndPoint = "https://graph.microsoft.com/v1.0/users";
+        private static string _mythicalGetUserEndPoint = "https://graph.microsoft.com/v1.0/users?$orderby=displayName";
         private static string _mythicalExperienceCreateEventEndPoint = "https://graph.microsoft.com/v1.0/me/events";
+        private static string _mythicalExperienceMessagesEndPoint = "https://graph.microsoft.com/v1.0/me/messages?$select=toRecipients,ccRecipients,from,subject,receivedDateTime,sentDateTime,importance&$filter=ReceivedDateTime ge {DateTime}&$orderby=ReceivedDateTime";
+        private static string _mythicalExperiencePeopleEndPoint = "https://graph.microsoft.com/v1.0/me/people/?$select=displayName,scoredEmailAddresses";
 
         private static string _outlookAccessToken="";
         private AuthenticationResult _authResult = null;
@@ -29,20 +31,30 @@ namespace MythicalExperienceConsole
 
         //https://docs.microsoft.com/en-us/azure/active-directory-b2c/active-directory-b2c-setup-aad-custom
         //Create an Azure AD app
-        //      ApplicationID on JAYPADDY Azure AD Org : d564c77c-0a5e-4c68-b56b-452e5a8ccf3c
-        //      JayPaddyAADKey Expires: ‎12‎/‎31‎/‎2299 : oh7ljBictuiajRxaK2IvMpBJ/iW1k39mHF0jYYBhUZs=
+        //      ApplicationID on M365X68139.ONMICROSOFT.COM Azure AD Org : 8a97ca38-2ece-40bc-8076-7fd84041fb14
+        //      m365x68139OrgKey Expires: ‎12‎/‎31‎/‎2299 : yXxQbjkGL3dSFNI39eh/Fktcv1tyFLjhEree9ljerkY=
         //Add the Azure AD key to Azure AD B2C
-        //      B2C_1A_MythicalExperience_JAYPADDY_AAD
+        //      B2C_1A_M365x68139
         //Add a claims provider in your base policy
-        //      
 
-        private static string[] _Graphscopes = new string[] { "User.Read", "User.ReadBasic.All",
-                                                              "Calendars.ReadWrite", "Calendars.Read.Shared", "Calendars.ReadWrite.Shared"
-                                                            };
+
+        //MythicalExperince APP ID in Mythicalbeast.onmicrosoft.com : 56ec8c46-a2d9-4b70-a154-f2aaeb415933
+
+        private static string Tenant = "mythicalbeast.onmicrosoft.com";
+
+        //MythicalExperienceB2CApp :: 4cbbb219-a037-4808-94ae-98873630e458
+        private static string B2C_ClientId = "4cbbb219-a037-4808-94ae-98873630e458"; //"f94f2cbb-481f-438f-a088-8923428958b8"; //"e1a16a81-cf9b-4191-98a4-1abac0d26133";  
+        public static string PolicySignUpSignIn = "B2C_1A_signup_signinaad";
+        private static string BaseAuthority = "https://login.microsoftonline.com/tfp/{tenant}/{policy}/oauth2/v2.0/authorize";
+        public  string Authority;
+
+
+        private static string[] _Graphscopes = new string[] { "User.Read", "User.ReadBasic.All", "Calendars.ReadWrite",  "Calendars.ReadWrite.Shared", "Mail.Read", "Mail.ReadWrite", "People.Read"};
         private static string[] _outlookscopes = new string[] { "https://outlook.office.com/user.readbasic.all" };
         private Subscription _subscription = null;
         private RoomList _roomList = null;
         private RoomList _crooms = null;
+        private UserList _userlist = null;
 
 
         public bool bGraphSignedIn,bOutlookSignedIn;
@@ -50,63 +62,98 @@ namespace MythicalExperienceConsole
 
         private FindTimeSuggestion lastFTSObj=null;
 
+        private string _authSource;
 
         public string GetLastMsg()
         {
             return lastMsg;
         }
-        public MythicalExperienceClient()
+        public MythicalExperienceClient(string AuthSource)
         {
-
-            PublicClientApp = new PublicClientApplication(ClientId, "https://login.microsoftonline.com/common", TokenCacheHelper.GetUserCache());
-
-
+        
+            if (AuthSource == "aad")
+            {
+                _authSource = "aad";
+                PublicClientApp = new PublicClientApplication(ClientId, "https://login.microsoftonline.com/common", TokenCacheHelper.GetUserCache());
+            }
+            else
+            {
+                _authSource = "b2c";
+                TokenCache tokenCache = TokenCacheHelper.GetUserCache();
+                Authority = BaseAuthority.Replace("{tenant}", Tenant).Replace("{policy}", AuthSource);
+                //PublicClientApp = new PublicClientApplication(B2C_ClientId, Authority, tokenCache);
+                PublicClientApp = new PublicClientApplication(B2C_ClientId, Authority);
+            }
         }
 
         public async Task<bool> SignInToGraph()
-        {
-            try
+        {    
+            if (_authSource == "b2c")
             {
-                _authResult = await PublicClientApp.AcquireTokenSilentAsync(_Graphscopes, PublicClientApp.Users.FirstOrDefault());
-
-
-            }
-            catch (MsalUiRequiredException ex)
-            {
-                // A MsalUiRequiredException happened on AcquireTokenSilentAsync. This indicates you need to call AcquireTokenAsync to acquire a token
-                lastMsg = $"MsalUiRequiredException: {ex.Message}";
                 try
                 {
-                    _authResult = await PublicClientApp.AcquireTokenAsync(_Graphscopes);
-                }
-                catch (MsalException msalex)
-                {
-                    lastMsg = $"Error Acquiring Token:{System.Environment.NewLine}{msalex}";
-                    bGraphSignedIn = false;
-                }
-            }
-            catch (Exception ex)
-            {
-                lastMsg = $"Error Acquiring Token Silently:{System.Environment.NewLine}{ex}";
-                bGraphSignedIn = false;
-            }
+                    // new string[] { String.Empty }
+                    _authResult = await PublicClientApp.AcquireTokenAsync(new string[] { String.Empty },
+                                                    string.Empty, UIBehavior.ForceLogin, null, null, Authority);
 
-            if (_authResult != null)
-            {
-                DisplayBasicTokenInfo(_authResult);
-                bGraphSignedIn = true;
+                    //Go after and get Graph Scope done.
+                   // _authResult = await PublicClientApp.AcquireTokenSilentAsync(_Graphscopes, _authResult.User);
+                    bGraphSignedIn = false;
+                    return bGraphSignedIn;
+                }
+                catch (Exception ex)
+                {
+                    lastMsg = $"Error Acquiring AADB2C Token :{System.Environment.NewLine}{ex}";
+                    bGraphSignedIn = false;
+                    return bGraphSignedIn;
+                }
             }
             else
-                bGraphSignedIn = false;
+            {
+                try
+                {
+                    _authResult = await PublicClientApp.AcquireTokenSilentAsync(_Graphscopes, PublicClientApp.Users.FirstOrDefault());
+                }
+                catch (MsalUiRequiredException ex)
+                {
+                    // A MsalUiRequiredException happened on AcquireTokenSilentAsync. This indicates you need to call AcquireTokenAsync to acquire a token
+                    lastMsg = $"MsalUiRequiredException: {ex.Message}";
+                    try
+                    {
+                        _authResult = await PublicClientApp.AcquireTokenAsync(_Graphscopes);
+                    }
+                    catch (MsalException msalex)
+                    {
+                        lastMsg = $"Error Acquiring Token:{System.Environment.NewLine}{msalex}";
+                        bGraphSignedIn = false;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastMsg = $"Error Acquiring Token Silently:{System.Environment.NewLine}{ex}";
+                    bGraphSignedIn = false;
+                }
 
-            return bGraphSignedIn;
+                if (_authResult != null)
+                {
+                    DisplayBasicTokenInfo(_authResult);
+                    bGraphSignedIn = true;
+                }
+                else
+                    bGraphSignedIn = false;
+
+                return bGraphSignedIn;
+            }
+
+
         }
 
         public async Task<bool>SignInToOutlook()
         {
             try
             {
-                _outlookAuthResult = await PublicClientApp.AcquireTokenSilentAsync(_outlookscopes, PublicClientApp.Users.FirstOrDefault());
+                if (_authSource == "aad")
+                    _outlookAuthResult = await PublicClientApp.AcquireTokenSilentAsync(_outlookscopes, PublicClientApp.Users.FirstOrDefault());
                 bOutlookSignedIn = true;
             }
             catch (MsalUiRequiredException ex)
@@ -360,7 +407,7 @@ namespace MythicalExperienceConsole
             }
         }
 
-        public async Task<string> FindMeetingTimes(List<EmailAddress> attendees)
+        public async Task<string> FindMeetingTimes(List<EmailAddress> attendees, string MtgDuration)
         {
 
             /*
@@ -375,12 +422,21 @@ namespace MythicalExperienceConsole
             foreach (EmailAddress attendee in attendees)
                 MTO.attendees.Add(new Attendee(attendee,"required"));
 
-           // MTO.locationConstraint = new LocationConstraint();
-           // MTO.locationConstraint.isRequired = "true";
-           // MTO.locationConstraint.suggestLocation = "true";
-            MTO.meetingDuration = "PT2H";
+            //Add myself
+            MTO.attendees.Add(new Attendee(new EmailAddress(_authResult.User.Name, _authResult.User.DisplayableId), "required"));
+            MTO.meetingDuration = MtgDuration; //"PT2H";
             MTO.minimumAttendeePercentage = "100";
             MTO.returnSuggestionReasons = "true";
+
+            //Time Constraint NOW
+            MTO.timeConstraint = new TimeConstraint();
+            MTO.timeConstraint.activityDomain = "unrestricted";
+            MTO.timeConstraint.timeslots = new List<Timeslot>();
+            DateTime startDateTime = DateTime.Now;
+            DateTime endDateTime = DateTime.Now.AddDays(3);
+            //"dateTime": "2017-04-17T09:00:00"
+            string format = @"yyyy-MM-ddThh:mm:ss";
+            MTO.timeConstraint.timeslots.Add(new Timeslot(startDateTime.ToString(format), endDateTime.ToString(format), "Central Standard Time"));
 
             FindTimeSuggestion FTSObj;
             string MTOJson = JsonConvert.SerializeObject(MTO);
@@ -390,7 +446,7 @@ namespace MythicalExperienceConsole
                 HttpClient client = new HttpClient();
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authResult.AccessToken);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                client.DefaultRequestHeaders.Add("Prefer", "outlook.timezone=\"Pacific Standard Time\"");
+                client.DefaultRequestHeaders.Add("Prefer", "outlook.timezone=\"Central Standard Time\"");
                 // Send the `POST subscriptions` request and parse the response.
                 HttpResponseMessage response = await client.PostAsync(_mythicalFindMtgTimesEndPoint, payload);
                 string retMsg = await response.Content.ReadAsStringAsync();
@@ -454,7 +510,7 @@ namespace MythicalExperienceConsole
             DateTime endDateTime = DateTime.Now.AddDays(3);
             //"dateTime": "2017-04-17T09:00:00"
             string format = @"yyyy-MM-ddThh:mm:ss";
-            MTO.timeConstraint.timeslots.Add(new Timeslot(startDateTime.ToString(format), endDateTime.ToString(format)));
+            MTO.timeConstraint.timeslots.Add(new Timeslot(startDateTime.ToString(format), endDateTime.ToString(format), "Central Standard Time"));
 
             FindTimeSuggestion FTSObj;
             string MTOJson = JsonConvert.SerializeObject(MTO);
@@ -519,6 +575,48 @@ namespace MythicalExperienceConsole
 
         }
 
+        public async Task<string> GetMessages(string fromDt)
+        {
+            //For now get all emails for Today
+
+            string endPoint = _mythicalExperienceMessagesEndPoint.Replace("{DateTime}", fromDt);
+
+            string retMsg = await GraphClientGET(endPoint);
+            lastMsg = "";
+            //Convert JSON to .NET
+            Messages msgs = JsonConvert.DeserializeObject<Messages>(retMsg);
+            lastMsg = "";
+            //Display the Total number of Messages by Domain
+            //Convert the Messages into a displayable list
+            lastMsg = $"Number of Messages :{msgs.Msg.Count} {System.Environment.NewLine}";
+            foreach (Message msg in msgs.Msg)
+            {
+                lastMsg += $"{msg.receivedDateTime} - {msg.from.emailAddress.address} - {msg.subject} {System.Environment.NewLine}";
+            }
+
+            return lastMsg;
+        }
+
+        public async Task<string> GetRelevantPeople()
+        {
+            //For now get all People Relevant to Signed User
+
+            string retMsg = await GraphClientGET(_mythicalExperiencePeopleEndPoint);
+            lastMsg = "";
+            //Convert JSON to .NET
+            RelevantPeople rPeople = JsonConvert.DeserializeObject<RelevantPeople>(retMsg);
+            lastMsg = "";
+    
+            lastMsg = $"Number of People :{rPeople.persons.Count} {System.Environment.NewLine}";
+            foreach (Person p in rPeople.persons)
+            {
+                lastMsg += $"\t\t{p.displayName} {System.Environment.NewLine}";
+            }
+
+            return lastMsg;
+        }
+
+
         public async Task<string> CreateEvent(int nSelFTS)
         {
             //Assuming lastFTSObj is populated and the user picked an item from the List of FindTimeSuggestions
@@ -538,12 +636,12 @@ namespace MythicalExperienceConsole
             Event calevent = new Event();
 
             //Loop through the Attendees for the Meeting
-            calevent.subject = $"Generated by MythicalExperienceConsole On {DateTime.Now.ToString()}";
+            calevent.subject = $"MythicalExperienceConsole - Generated On {DateTime.Now.ToString()}";
             calevent.body = new Body();
             calevent.body.content = $"Welcome to MythicalExperienceConsole............... ";
             calevent.body.contentType = $"HTML";
-            calevent.start = new Start(mts.meetingTimeSlot.start.dateTime, "Pacific Standard Time");
-            calevent.end = new End(mts.meetingTimeSlot.end.dateTime, "Pacific Standard Time");
+            calevent.start = new Start(mts.meetingTimeSlot.start.dateTime, "Central Standard Time");
+            calevent.end = new End(mts.meetingTimeSlot.end.dateTime, "Central Standard Time");
             calevent.attendees = new List<Attendee>();
             foreach (AttendeeAvailability attAvail in mts.attendeeAvailability)
             {
@@ -559,10 +657,13 @@ namespace MythicalExperienceConsole
             //Generate JSON for CalEvent;
             string calEventJSON = JsonConvert.SerializeObject(calevent);
             var payload = new StringContent(calEventJSON, Encoding.UTF8, "application/json");
-
-
-
             retMsg = await GraphClientPOST(_mythicalExperienceCreateEventEndPoint, payload);
+            lastMsg = "";
+            //Convert JSON to .NET
+            CreateEventResponse evtResponse = JsonConvert.DeserializeObject<CreateEventResponse>(retMsg);
+            retMsg = $"Created Meeting with Subject {evtResponse.subject}";
+
+
             lastMsg = retMsg;
             return retMsg;
 
@@ -577,7 +678,7 @@ namespace MythicalExperienceConsole
                 HttpClient client = new HttpClient();
                 client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authResult.AccessToken);
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                //client.DefaultRequestHeaders.Add("Prefer", "outlook.timezone=\"Pacific Standard Time\"");
+                //client.DefaultRequestHeaders.Add("Prefer", "outlook.timezone=\"Central Standard Time\"");
                 // Send the `POST subscriptions` request and parse the response.
                 HttpResponseMessage response = await client.PostAsync(endPoint, payload);
                 retMsg = await response.Content.ReadAsStringAsync();
@@ -609,6 +710,7 @@ namespace MythicalExperienceConsole
                 catch (MsalException msalex)
                 {
                     lastMsg = $"Error Acquiring Token:{System.Environment.NewLine}{msalex}";
+                    retMsg = "ERROR";
                     bGraphSignedIn = false;
                 }
             }
@@ -622,11 +724,11 @@ namespace MythicalExperienceConsole
                 HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, endPoint);
                 HttpResponseMessage response = await client.SendAsync(request);
                 retMsg = await response.Content.ReadAsStringAsync();
-                retMsg = await response.Content.ReadAsStringAsync();
             }
             catch (Exception ex)
             {
-                retMsg = ex.ToString();
+                lastMsg = ex.ToString();
+                retMsg = "ERROR";
             }
             return retMsg;
         }
@@ -657,6 +759,47 @@ namespace MythicalExperienceConsole
             return bGraphSignedIn;
 
         }
+      
+        public async Task<string> ListUsers(int nUpperBound)
+        {
+            string retMsg = await GraphClientGET(_mythicalGetUserEndPoint);
+            string endPoint = _mythicalGetUserEndPoint;
+            int nIndex = 0;
+            //Convert JSON to .NET
+            UserList ul;
+            lastMsg = "";
+            _userlist = new UserList();
+            //Check for Pagination
+            //We have more than 100 records... need to loop through
+            while (true)
+            {
+                retMsg = await GraphClientGET(endPoint);
+                if (retMsg == "ERROR")
+                {
+                    return lastMsg;
+                }
+                ul = JsonConvert.DeserializeObject<UserList>(retMsg);
+                _userlist.user.AddRange(ul.user);
+                foreach (var user in _userlist.user)
+                {
+                    lastMsg += $"{nIndex}.{user.displayName}\t{user.jobTitle}\t{user.mail} {System.Environment.NewLine}";
+                    nIndex++;
+                }
+                //Check if there is another page && out of requested count
+                if (ul.NextPageLink == null || nIndex >= nUpperBound)
+                    break;
+                else
+                    endPoint = ul.NextPageLink;
+
+
+            }
+
+
+            return lastMsg;
+
+        }
+
+
 
 
     }

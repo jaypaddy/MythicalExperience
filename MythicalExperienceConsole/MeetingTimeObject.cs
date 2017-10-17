@@ -87,10 +87,10 @@ namespace MythicalExperienceConsole
         public Start start { get; set; }
         public End end { get; set; }
 
-        public Timeslot(string _start, string _end)
+        public Timeslot(string _start, string _end, string timezone)
         {
-            start = new Start(_start, "Pacific Standard Time");
-            end = new End(_end, "Pacific Standard Time");
+            start = new Start(_start, timezone);
+            end = new End(_end, timezone);
         }
     }
 
