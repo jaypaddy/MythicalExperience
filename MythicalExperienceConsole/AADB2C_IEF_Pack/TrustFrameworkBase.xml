@@ -4,9 +4,9 @@
   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
   xmlns="http://schemas.microsoft.com/online/cpim/schemas/2013/06"
   PolicySchemaVersion="0.3.0.0"
-  TenantId="yourtenant.onmicrosoft.com"
+  TenantId="mythicalbeast.onmicrosoft.com"
   PolicyId="B2C_1A_TrustFrameworkBase"
-  PublicPolicyUri="http://yourtenant.onmicrosoft.com/B2C_1A_TrustFrameworkBase">
+  PublicPolicyUri="http://mythicalbeast.onmicrosoft.com/B2C_1A_TrustFrameworkBase">
 
   <BuildingBlocks>
     <ClaimsSchema>
@@ -26,6 +26,20 @@
 
       <!-- SECTION I: Claims required for user journeys to work properly -->
 
+
+        <!-- EXTENSION ATTRIBUTES -->
+        <ClaimType Id="extension_termsofsvc">
+          <DisplayName>I consent access to MythicalExperience.</DisplayName>
+          <DataType>string</DataType>
+          <UserHelpText>Your consent to MythicalExperience</UserHelpText>
+          <UserInputType>CheckboxMultiSelect</UserInputType>
+          <Restriction>
+            <Enumeration Text="Yes" Value="Yes" SelectByDefault="true" />
+            <Enumeration Text="No" Value="No" SelectByDefault="false" />
+          </Restriction>
+        </ClaimType>
+   
+      
       <ClaimType Id="socialIdpUserId">
         <DisplayName>Username</DisplayName>
         <DataType>string</DataType>
@@ -440,7 +454,7 @@
     -->
   <ClaimsProviders>
 
-        <ClaimsProvider>
+      <ClaimsProvider>
       <!-- The following Domain element allows this profile to be used if the request comes with domain_hint 
            query string parameter, e.g. domain_hint=facebook.com  -->
       <Domain>facebook.com</Domain>
@@ -832,7 +846,9 @@
           </InputClaims>
           <OutputClaims>
             <OutputClaim ClaimTypeReferenceId="objectId" />
-            <OutputClaim ClaimTypeReferenceId="email" PartnerClaimType="Verified.Email" Required="true" />
+            <!-- EXTENSION Turned Email Verification to FALSE -->             
+            <!--  PartnerClaimType="Verified.Email" Required="true"-->
+            <OutputClaim ClaimTypeReferenceId="email" Required="true" />
             <OutputClaim ClaimTypeReferenceId="newPassword" Required="true" />
             <OutputClaim ClaimTypeReferenceId="reenterPassword" Required="true" />
             <OutputClaim ClaimTypeReferenceId="executed-SelfAsserted-Input" DefaultValue="true" />
@@ -843,6 +859,8 @@
             <OutputClaim ClaimTypeReferenceId="displayName" />
             <OutputClaim ClaimTypeReferenceId="givenName" />
             <OutputClaim ClaimTypeReferenceId="surName" />
+            <!-- EXTENSION ATTRIBUTES -->
+            <OutputClaim ClaimTypeReferenceId="extension_termsofsvc" />
           </OutputClaims>
           <ValidationTechnicalProfiles>
             <ValidationTechnicalProfile ReferenceId="AAD-UserWriteUsingLogonEmail" />
@@ -991,6 +1009,7 @@
           <Metadata>
             <Item Key="client_id">{service:te}</Item>
             <Item Key="issuer_refresh_token_user_identity_claim_type">objectId</Item>
+            <Item Key="SendTokenResponseBodyWithJsonNumbers">true</Item>
           </Metadata>
           <CryptographicKeys>
             <Key Id="issuer_secret" StorageReferenceId="B2C_1A_TokenSigningKeyContainer" />
